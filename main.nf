@@ -10,7 +10,7 @@ process generateManifest {
     path mzml_files
     
     output:
-    path "manifest.fp-manifest"
+    path "${mzml_files.baseName}_manifest.fp-manifest"
     
     script:
     """
@@ -18,7 +18,7 @@ process generateManifest {
     for FILE in ${mzml_files}; do
         REP=\$((REP + 1))
         printf "%s\\tQC\\t%d\\n" "\$FILE" "\$REP"
-    done > manifest.fp-manifest
+    done > ${mzml_files.baseName}_manifest.fp-manifest
     """
 }
 
@@ -46,10 +46,6 @@ workflow {
     // Use the converted files directly from the work directory
     convertMzxmlW.out.set { raw_files }
 
-    // TODO: figure out how to make sure that params.outdir_search is
-    // set dynamically for this last step to something that includes
-    // the RAW file name so that it will be unique
-    
     // Run FragPipe analysis
     search(params.tools_folder,
 	   params.diann,
