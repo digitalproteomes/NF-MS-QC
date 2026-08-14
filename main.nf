@@ -10,7 +10,7 @@ process generateManifest {
     path mzml_files
     
     output:
-    path "${mzml_files.baseName}_manifest.fp-manifest"
+    path "manifest.fp-manifest"
     
     script:
     """
@@ -18,7 +18,7 @@ process generateManifest {
     for FILE in ${mzml_files}; do
         REP=\$((REP + 1))
         printf "%s\\tQC\\t%d\\n" "\$FILE" "\$REP"
-    done > ${mzml_files.baseName}_manifest.fp-manifest
+    done > manifest.fp-manifest
     """
 }
 
