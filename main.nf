@@ -3,7 +3,7 @@ nextflow.enable.dsl=2
 include {convert;
 	 convertMzxmlW} from './NF-ConvertThermo/convertThermo_workflows.nf'
 
-include {search} from './NF-Frapipe/fragpipe_workflows.nf'
+include {search} from './NF-FragPipe/fragpipe_workflows.nf'
 
 process generateManifest {
     input:
