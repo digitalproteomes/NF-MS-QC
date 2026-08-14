@@ -5,6 +5,23 @@ include {convert;
 
 include {search} from './NF-Frapipe/fragpipe_workflows.nf'
 
+process generateManifest {
+    input:
+    path mzml_files
+    
+    output:
+    path "manifest.fp-manifest"
+    
+    script:
+    """
+    REP=0
+    for FILE in ${mzml_files}; do
+        REP=\$((REP + 1))
+        printf "%s\\tQC\\t%d\\n" "\$FILE" "\$REP"
+    done > manifest.fp-manifest
+    """
+}
+
 workflow {
     main:
     log.info("++++++++++========================================")
@@ -23,24 +40,11 @@ workflow {
 		  params.link_files.toBoolean()
     )
 
-    // TODO: This needs to be adjusted since we don't have unique
-    // manifest-fp.manifest in this implementation
-
-    // NOTE: the manifest-fp.manifest is currently being generate by a
-    // shell script. We should write a nexflow process to do it. Since
-    // this is running as a single pipeline this will end up in the
-    // work directory and we won't have to worry about naming
-    // collisions.
-
-    // REP=0
-    // find "$(pwd)/Results/MzML" -name "*.mzML" -print0 | while IFS= read -r -d '' FILE; do
-    //   ((REP++))
-    //   printf "%s\tQC\t%d\t${SEARCH_TYPE}\n" "$FILE" "$REP"
-    // done > manifest.fp-manifest
+    // Generate the manifest file from the converted mzML files
+    generateManifest(convertMzxmlW.out.collect())
     
-    
-    // Extract the list of files we need to search from FragPipe manifest file
-    channel.fromPath(params.manifest_fp)
+    // Extract the list of files we need to search from the generated FragPipe manifest file
+    generateManifest.out
 	.splitCsv(sep: '\t')
 	.map { row -> file("${row[0]}") }
 	.set { file_list }
@@ -57,7 +61,7 @@ workflow {
 	   params.diann,
 	   params.python,
 	   file(params.workflow_fp),
-	   file(params.manifest_fp), // TODO: Adjust as well
+	   generateManifest.out,
 	   raw_files,
 	   file(params.database_fp),
 	   params.fragpipe_threads.toInteger())
