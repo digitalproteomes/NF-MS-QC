@@ -41,16 +41,10 @@ workflow {
     )
 
     // Generate the manifest file from the converted mzML files
-    generateManifest(convertMzxmlW.out.collect())
+    generateManifest(convertMzxmlW.out)
     
-    // Extract the list of files we need to search from the generated FragPipe manifest file
-    generateManifest.out
-	.splitCsv(sep: '\t')
-	.map { row -> file("${row[0]}") }
-	.set { file_list }
-
-    file_list.toList()
-	.set { raw_files }
+    // Use the converted files directly from the work directory
+    convertMzxmlW.out.set { raw_files }
 
     // TODO: figure out how to make sure that params.outdir_search is
     // set dynamically for this last step to something that includes
