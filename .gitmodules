@@ -1,0 +1,8 @@
+[submodule "NF-ConvertThermo"]
+	path = NF-ConvertThermo
+	url = git@github.com:digitalproteomes/NF-ConvertThermo.git
+	branch = publishdir
+[submodule "NF-FragPipe"]
+	path = NF-FragPipe
+	url = git@github.com:wollscheidlab/NF-FragPipe.git
+	branch = publishdir
