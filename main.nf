@@ -22,6 +22,52 @@ process generateManifest {
     """
 }
 
+process papermill {
+    tag "$template_ipynb"
+    cpus 2
+    memory 5.GB
+
+    publishDir 'Results/Jhub', mode: 'copy'
+    
+    input:
+    path template_ipynb    
+    path raw_file
+    path mzxml_file
+    path psm_file
+
+    output:
+    path "qc.ipynb", emit: ipynb
+
+    script:
+    """
+    papermill $template_ipynb qc.ipynb \
+        --kernel python3_parallel \
+        -p raw_file $raw_file \
+        -p mzxml_file $mzxml_file \
+        -p psm_file $psm_file
+    """
+}
+
+
+process ipynbToHtml{
+    tag "$ipynb"
+    cpus 1
+    memory 10.GB
+
+    publishDir 'Results/Jhub', mode: 'copy'
+
+    input:
+    path ipynb
+
+    output:
+    file '*.html'
+
+    script:
+    """
+    jupyter-nbconvert --to html $ipynb
+    """
+}
+
 workflow {
     main:
     log.info("++++++++++========================================")
@@ -44,7 +90,7 @@ workflow {
     generateManifest(convertMzxmlW.out)
     
     // Use the converted files directly from the work directory
-    convertMzxmlW.out.set { raw_files }
+    convertMzxmlW.out.set { mzml_files }
 
     // Run FragPipe analysis
     search(params.tools_folder,
@@ -52,8 +98,15 @@ workflow {
 	   params.python,
 	   file(params.workflow_fp),
 	   generateManifest.out,
-	   raw_files,
+	   mzml_files,
 	   file(params.database_fp),
 	   params.fragpipe_threads.toInteger())
 
+    papermill(params.template_ipynb,
+	      raw_file,
+	      mzxml_file,
+    )
+
+    ipynb = papermill.out.ipynb
+    ipynbToHtml(ipynb)
 }
