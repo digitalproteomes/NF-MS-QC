@@ -58,6 +58,7 @@ process ipynbToHtml{
 
     input:
     path ipynb
+    path mzxml_file
 
     output:
     file '*.html'
@@ -103,11 +104,15 @@ workflow {
 	   params.fragpipe_threads.toInteger())
 
     papermill(file(params.template_ipynb),
-	      file(convert.out.raw_files),
-	      convertMzxmlW.out,
-	      file(params.psm_file)
+	      convert.out.raw_files,
+	      convert.out.conv_out,
+	      search.out.psm
     )
 
     ipynb = papermill.out.ipynb
-    ipynbToHtml(ipynb)
+    ipynbToHtml(ipynb,
+		// We add the mzXML files not because the process
+		// needs them, but because we use the filename to
+		// calculate the publishDir location
+		convert.out.conv_out)
 }
