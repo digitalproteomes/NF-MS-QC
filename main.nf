@@ -36,15 +36,18 @@ process papermill {
     path psm_file
 
     output:
-    path "qc.ipynb", emit: ipynb
+    path "qc_*.ipynb", emit: ipynb
 
     script:
     """
-    papermill $template_ipynb qc.ipynb \
+    MZXML_BASENAME=\$(basename "$mzxml_file")
+    MZXML_BASENAME=\${MZXML_BASENAME%.*}
+
+    papermill "$template_ipynb" "qc_\${MZXML_BASENAME}.ipynb" \
         --kernel python3_parallel \
-        -p raw_file $raw_file \
-        -p mzxml_file $mzxml_file \
-        -p psm_file $psm_file
+        -p raw_file "$raw_file" \
+        -p mzxml_file "$mzxml_file" \
+        -p psm_file "$psm_file"
     """
 }
 
