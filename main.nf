@@ -10,7 +10,8 @@ process generateManifest {
     path mzml_files
     
     output:
-    path "manifest.fp-manifest"
+    path "manifest.fp-manifest", emit: manifest
+    path mzml_files, emit: mzml_files
     
     script:
     """
@@ -96,15 +97,16 @@ workflow {
     generateManifest(convertMzxmlW.out)
     
     // Use the converted files directly from the work directory
-    convertMzxmlW.out.set { mzml_files }
+    //convertMzxmlW.out.set { mzml_files }
 
     // Run FragPipe analysis
     search(params.tools_folder,
 	   params.diann,
 	   params.python,
 	   file(params.workflow_fp),
-	   generateManifest.out,
-	   mzml_files,
+	   generateManifest.out.manifest,
+	   generateManifest.out.mzml_files,	   
+	   //	   mzml_files,
 	   file(params.database_fp),
 	   params.fragpipe_threads.toInteger())
 
