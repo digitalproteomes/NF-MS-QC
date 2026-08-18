@@ -10,8 +10,7 @@ process generateManifest {
     path mzml_files
     
     output:
-    path "manifest.fp-manifest", emit: manifest
-    path mzml_files, emit: mzml_files
+    tuple path("manifest.fp-manifest"), path(mzml_files), emit: manifest_data
     
     script:
     """
@@ -95,18 +94,22 @@ workflow {
 
     // Generate the manifest file from the converted mzML files
     generateManifest(convertMzxmlW.out)
-    
-    // Use the converted files directly from the work directory
-    //convertMzxmlW.out.set { mzml_files }
+
+    // Unpack the synchronized tuple into separate matched channels
+    generateManifest.out.manifest_data
+        .multiMap { manifest, files ->
+            manifests: manifest
+            mzml_files: files
+        }
+        .set { ch_search_inputs }
 
     // Run FragPipe analysis
     search(params.tools_folder,
 	   params.diann,
 	   params.python,
 	   file(params.workflow_fp),
-	   generateManifest.out.manifest,
-	   generateManifest.out.mzml_files,	   
-	   //	   mzml_files,
+	   ch_search_inputs.manifests,
+           ch_search_inputs.mzml_files,
 	   file(params.database_fp),
 	   params.fragpipe_threads.toInteger())
 
