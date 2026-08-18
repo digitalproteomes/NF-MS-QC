@@ -34,6 +34,7 @@ process papermill {
     val raw_file
     path mzxml_file
     path psm_file
+    path metrics_db
 
     output:
     path "qc_*.ipynb", emit: ipynb
@@ -47,7 +48,8 @@ process papermill {
         --kernel python3_parallel \
         -p raw_file "$raw_file" \
         -p mzxml_file "$mzxml_file" \
-        -p psm_file "$psm_file"
+        -p psm_file "$psm_file" \
+	-p metrics_db "$metrics_db"
     """
 }
 
@@ -109,7 +111,8 @@ workflow {
     papermill(file(params.template_ipynb),
 	      convert.out.raw_files,
 	      convert.out.conv_out,
-	      search.out.psm
+	      search.out.psm,
+	      params.metrics_db
     )
 
     ipynb = papermill.out.ipynb
