@@ -31,7 +31,7 @@ process papermill {
     
     input:
     path template_ipynb    
-    path raw_file
+    val raw_file
     path mzxml_file
     path psm_file
 
@@ -81,7 +81,7 @@ workflow {
 	    params.link_files.toBoolean()
     )
     
-    convertMzxmlW(convert.out,
+    convertMzxmlW(convert.out.conv_out,
 		  params.conv_params_msconvert,
 		  params.link_files.toBoolean()
     )
@@ -102,9 +102,10 @@ workflow {
 	   file(params.database_fp),
 	   params.fragpipe_threads.toInteger())
 
-    papermill(params.template_ipynb,
-	      raw_file,
-	      mzxml_file,
+    papermill(file(params.template_ipynb),
+	      file(convert.out.raw_files),
+	      convertMzxmlW.out,
+	      file(params.psm_file)
     )
 
     ipynb = papermill.out.ipynb
