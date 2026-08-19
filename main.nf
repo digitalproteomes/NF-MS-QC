@@ -86,10 +86,46 @@ workflow {
 	    params.monitor.toBoolean(),
 	    params.link_files.toBoolean()
     )
-    
-    convertMzxmlW(convert.out.conv_out,
-		  params.conv_params_msconvert,
-		  params.link_files.toBoolean()
+
+    // Match mzxml and raw files coming from convert() based on filename
+    raw_ch  = convert.out.raw_files.map { file -> tuple(file.baseName, file) }
+    conv_ch = convert.out.conv_out.map  { file -> tuple(file.baseName, file) }
+    qc_pairs = raw_ch.join(conv_ch)
+
+    runQc(qc_pairs.map { id, raw, conv -> conv },
+	  params.conv_params_msconvert,
+	  params.link_files.toBoolean(),
+	  params.tools_folder,
+	  params.diann,
+	  params.python,
+	  params.workflow_fp,
+	  params.database_fp,
+	  params.fragpipe_threads.toInteger(),
+	  file(params.template_ipynb),
+	  qc_pairs.map { id, raw, conv -> raw },
+	  params.metrics_db
+    )
+}
+
+workflow runQc{
+    take:
+    mzxml_file
+    conv_params_msconvert
+    link_files
+    tools_folder
+    diann
+    python
+    workflow_fp
+    database_fp
+    fragpipe_threads
+    template_ipynb_file
+    raw_file
+    metrics_db
+
+    main:
+    convertMzxmlW(mzxml_file,
+		  conv_params_msconvert,
+		  link_files
     )
 
     // Generate the manifest file from the converted mzML files
@@ -104,20 +140,21 @@ workflow {
         .set { ch_search_inputs }
 
     // Run FragPipe analysis
-    search(params.tools_folder,
-	   params.diann,
-	   params.python,
-	   file(params.workflow_fp),
+    search(tools_folder,
+	   diann,
+	   python,
+	   file(workflow_fp),
 	   ch_search_inputs.manifests,
-           ch_search_inputs.mzml_files,
-	   file(params.database_fp),
-	   params.fragpipe_threads.toInteger())
+        ch_search_inputs.mzml_files,
+	   file(database_fp),
+	   fragpipe_threads)
 
-    papermill(file(params.template_ipynb),
-	      convert.out.raw_files,
-	      convert.out.conv_out,
+    // TODO: you have to make sure these are all matched!
+    papermill(template_ipynb_file,
+	      raw_file,
+	      mzxml_file,
 	      search.out.psm,
-	      params.metrics_db
+	      metrics_db
     )
 
     ipynb = papermill.out.ipynb
@@ -125,5 +162,5 @@ workflow {
 		// We add the mzXML files not because the process
 		// needs them, but because we use the filename to
 		// calculate the publishDir location
-		convert.out.conv_out)
+		mzxml_file)
 }
