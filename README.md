@@ -13,10 +13,15 @@ This Nextflow pipeline implements a Mass Spectrometry Quality Control (MS-QC) wo
 
 - [Nextflow](https://www.nextflow.io/)
 - [FragPipe](https://fragpipe.nesvilab.org/)
-- [Python](https://www.python.org/) with `papermill` and `jupyter` installed
-- Java (for Nextflow)
+- [Python](https://www.python.org/) with `papermill`, `ms_qc_tools` and `jupyter` installed
+- [CELESTIAL](https://github.com/digitalproteomes/celestial)
 
 ## Usage
 
 To run the pipeline, execute the following command:
 
+``` shell
+nextflow run digitalproteomes/NF-MS-QC
+```
+
+The pipeline will monitor the folder `Data/RAW` for any new Thermo RAW file and execute a full QC workflow when it finds one.
