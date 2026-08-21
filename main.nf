@@ -145,7 +145,7 @@ workflow runQc{
 	   python,
 	   file(workflow_fp),
 	   ch_search_inputs.manifests,
-        ch_search_inputs.mzml_files,
+           ch_search_inputs.mzml_files,
 	   file(database_fp),
 	   fragpipe_threads)
 
