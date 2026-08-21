@@ -84,7 +84,6 @@ process archiveRawFile {
 
     script:
     """
-    mkdir -p "$archive_folder"
     mv "$raw_file" "$archive_folder/"
     """
 }
@@ -125,7 +124,7 @@ workflow {
     archiveRawFile(
         qc_pairs.map { id, raw, conv -> raw.toAbsolutePath().toString() },
         runQc.out.html,
-        params.archive_folder ?: '/Archive'
+        params.archive_folder
     )
 }
 
