@@ -74,6 +74,21 @@ process ipynbToHtml{
     """
 }
 
+process archiveRawFile {
+    tag "$raw_file"
+
+    input:
+    val raw_file
+    path html_file
+    val archive_folder
+
+    script:
+    """
+    mkdir -p "$archive_folder"
+    mv "$raw_file" "$archive_folder/"
+    """
+}
+
 workflow {
     main:
     log.info("++++++++++========================================")
@@ -104,6 +119,13 @@ workflow {
 	  file(params.template_ipynb),
 	  qc_pairs.map { id, raw, conv -> raw },
 	  params.metrics_db
+    )
+
+    // Archive the original raw file after successful QC
+    archiveRawFile(
+        qc_pairs.map { id, raw, conv -> raw.toAbsolutePath().toString() },
+        runQc.out.html,
+        params.archive_folder ?: '/Archive'
     )
 }
 
@@ -158,9 +180,12 @@ workflow runQc{
     )
 
     ipynb = papermill.out.ipynb
-    ipynbToHtml(ipynb,
+    html_out = ipynbToHtml(ipynb,
 		// We add the mzXML files not because the process
 		// needs them, but because we use the filename to
 		// calculate the publishDir location
 		mzxml_file)
+
+    emit:
+    html = html_out
 }
