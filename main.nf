@@ -177,7 +177,7 @@ workflow runQc{
     papermill(template_ipynb_file,
 	      raw_file,
 	      mzxml_file,
-	      search.out,
+	      search.out.psm,
 	      metrics_db
     )
 
