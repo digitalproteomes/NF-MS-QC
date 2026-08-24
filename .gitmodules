@@ -4,5 +4,5 @@
 	branch = publishdir
 [submodule "NF-FragPipe"]
 	path = NF-FragPipe
-	url = https://github.com/digitalproteomes/NF-FragPipe.git
+	url = https://github.com/wollscheidlab/NF-FragPipe.git
 	branch = publishdir
