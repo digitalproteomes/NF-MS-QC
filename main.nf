@@ -107,7 +107,7 @@ workflow {
     conv_ch = convert.out.conv_out.map  { file -> tuple(file.baseName, file) }
     qc_pairs = raw_ch.join(conv_ch)
 
-    runQc(qc_pairs.map { id, raw, conv -> conv },
+    runQc(qc_pairs.map { _id, _raw, conv -> conv },
 	  params.conv_params_msconvert,
 	  params.link_files.toBoolean(),
 	  params.tools_folder,
@@ -117,14 +117,14 @@ workflow {
 	  params.database_fp,
 	  params.fragpipe_threads.toInteger(),
 	  file(params.template_ipynb),
-	  qc_pairs.map { id, raw, conv -> raw },
+	  qc_pairs.map { _id, raw, _conv -> raw },
 	  params.metrics_db
     )
 
     // Archive the original raw file after successful QC
     if (params.archive_raw.toBoolean()) {
         archiveRawFile(
-            qc_pairs.map { id, raw, conv -> raw.toAbsolutePath().toString() },
+            qc_pairs.map { _id, raw, _conv -> raw.toAbsolutePath().toString() },
             runQc.out.html,
             params.archive_folder
         )
