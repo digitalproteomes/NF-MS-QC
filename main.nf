@@ -122,11 +122,13 @@ workflow {
     )
 
     // Archive the original raw file after successful QC
-    archiveRawFile(
-        qc_pairs.map { id, raw, conv -> raw.toAbsolutePath().toString() },
-        runQc.out.html,
-        params.archive_folder
-    )
+    if (params.archive_raw.toBoolean()) {
+        archiveRawFile(
+            qc_pairs.map { id, raw, conv -> raw.toAbsolutePath().toString() },
+            runQc.out.html,
+            params.archive_folder
+        )
+    }
 }
 
 workflow runQc{
