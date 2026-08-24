@@ -118,7 +118,7 @@ workflow {
 	  params.workflow_fp,
 	  params.database_fp,
 	  params.fragpipe_threads.toInteger(),
-	  file(params.template_ipynb),
+	  params.template_ipynb,
 	  qc_pairs.map { _id, raw, _conv -> raw },
 	  params.metrics_db
     )
@@ -176,7 +176,7 @@ workflow runQc{
 	   fragpipe_threads)
 
     // TODO: you have to make sure these are all matched!
-    papermill(template_ipynb_file,
+    papermill(file("$baseDir/$template_ipynb_file"),
 	      raw_file,
 	      mzxml_file,
 	      search.out.psm,
