@@ -76,6 +76,7 @@ process ipynbToHtml{
 
 process archiveRawFile {
     tag "$raw_file"
+    container null
 
     input:
     val raw_file
