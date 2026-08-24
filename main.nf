@@ -96,6 +96,8 @@ workflow {
     log.info("")
     log.info("++++++++++========================================")
 
+    log.info groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(params))
+    
     convert(params.raw_folder,
 	    params.conv_params,
 	    params.monitor.toBoolean(),
