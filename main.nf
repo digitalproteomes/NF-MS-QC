@@ -21,7 +21,30 @@ process generateManifest {
     """
 }
 
-process papermill {
+process papermill_instrument {
+    tag "$id"
+    cpus 2
+    memory 5.GB
+
+    publishDir 'Results/Jhub', mode: 'copy'
+
+    input:
+    path template_ipynb
+    tuple val(id), val(raw_file), path(mzxml_file)
+
+    output:
+    tuple val(id), path("qc_instrument_${id}.ipynb"), emit: ipynb
+
+    script:
+    """
+    papermill "$template_ipynb" "qc_instrument_${id}.ipynb" \
+        --kernel python3_parallel \
+        -p raw_file "$raw_file" \
+        -p mzxml_file "$mzxml_file"
+    """
+}
+
+process papermill_identification {
     tag "$id"
     cpus 2
     memory 5.GB
@@ -31,19 +54,17 @@ process papermill {
     input:
     path template_ipynb
     tuple val(id), val(raw_file), path(mzxml_file), path(psm_file)
-    path metrics_db
 
     output:
-    tuple val(id), path("qc_${id}.ipynb"), emit: ipynb
+    tuple val(id), path("qc_identification_${id}.ipynb"), emit: ipynb
 
     script:
     """
-    papermill "$template_ipynb" "qc_${id}.ipynb" \
+    papermill "$template_ipynb" "qc_identification_${id}.ipynb" \
         --kernel python3_parallel \
         -p raw_file "$raw_file" \
         -p mzxml_file "$mzxml_file" \
-        -p psm_file "$psm_file" \
-        -p metrics_db "$metrics_db"
+        -p psm_file "$psm_file"
     """
 }
 
@@ -102,16 +123,17 @@ workflow {
     qc_pairs = raw_ch.join(conv_ch)
 
     runQc(qc_pairs,
-      params.conv_params_msconvert,
-      params.link_files.toBoolean(),
-      params.tools_folder,
-      params.diann,
-      params.python,
-      params.workflow_fp,
-      params.database_fp,
-      params.fragpipe_threads.toInteger(),
-      params.template_ipynb,
-      params.metrics_db
+	  params.conv_params_msconvert,
+	  params.link_files.toBoolean(),
+	  params.tools_folder,
+	  params.diann,
+	  params.python,
+	  params.workflow_fp,
+	  params.database_fp,
+	  params.fragpipe_threads.toInteger(),
+	  params.instrument_template_ipynb,
+	  params.identification_template_ipynb,
+	  params.metrics_db
     )
 
     // Archive the original raw file after successful QC
@@ -136,10 +158,21 @@ workflow runQc{
     workflow_fp
     database_fp
     fragpipe_threads
-    template_ipynb_file
+    instrument_template_ipynb_file
+    identification_template_ipynb_file
     metrics_db
 
     main:
+    // Run papermill on mzXML for instrument QC
+    papermill_instrument(
+	file("$baseDir/$instrument_template_ipynb_file"),
+	qc_pairs
+    )
+
+    // Convert to HTML
+    ipynbToHtml(papermill_instrument.out.ipynb)
+    
+    
     // Convert mzXML to mzML
     convertMzxmlW(qc_pairs.map { id, _raw, conv -> conv },
           conv_params_msconvert,
@@ -177,14 +210,13 @@ workflow runQc{
     // Join qc_pairs with psm_keyed on id
     papermill_input = qc_pairs.join(psm_keyed)   // id, raw, mzXML, psm
 
-    // Run papermill
-    papermill(file("$baseDir/$template_ipynb_file"),
+    // Run papermill for identifications
+    papermill_identification(file("$baseDir/$identification_template_ipynb_file"),
           papermill_input,
-          metrics_db
     )
 
     // Convert to HTML
-    ipynbToHtml(papermill.out.ipynb)
+    ipynbToHtml(papermill_identification.out.ipynb)
 
     emit:
     html = ipynbToHtml.out.html   // tuple(id, html)
