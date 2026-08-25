@@ -1,4 +1,3 @@
-
 nextflow.enable.dsl=2
 
 include {convert;
@@ -140,7 +139,7 @@ workflow {
     if (params.archive_raw.toBoolean()) {
         archiveRawFile(
             qc_pairs.map { id, raw, _conv -> tuple(id, raw.toAbsolutePath().toString()) }
-                    .join(runQc.out.html)
+                    .join(runQc.out.html.filter { _id, html -> html.name.contains('qc_identification') })
                     .map { id, raw, _html -> tuple(id, raw) },
             params.archive_folder
         )
@@ -169,10 +168,6 @@ workflow runQc{
 	qc_pairs
     )
 
-    // Convert to HTML
-    ipynbToHtml(papermill_instrument.out.ipynb)
-    
-    
     // Convert mzXML to mzML
     convertMzxmlW(qc_pairs.map { id, _raw, conv -> conv },
           conv_params_msconvert,
@@ -215,8 +210,8 @@ workflow runQc{
           papermill_input,
     )
 
-    // Convert to HTML
-    ipynbToHtml(papermill_identification.out.ipynb)
+    // Convert both instrument and identification notebooks to HTML
+    ipynbToHtml(papermill_instrument.out.ipynb.mix(papermill_identification.out.ipynb))
 
     emit:
     html = ipynbToHtml.out.html   // tuple(id, html)
