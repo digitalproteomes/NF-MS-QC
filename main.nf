@@ -30,6 +30,7 @@ process papermill_instrument {
     input:
     path template_ipynb
     tuple val(id), val(raw_file), path(mzxml_file)
+    path metrics_db
 
     output:
     tuple val(id), path("qc_instrument_${id}.ipynb"), emit: ipynb
@@ -39,7 +40,8 @@ process papermill_instrument {
     papermill "$template_ipynb" "qc_instrument_${id}.ipynb" \
         --kernel python3_parallel \
         -p raw_file "$raw_file" \
-        -p mzxml_file "$mzxml_file"
+        -p mzxml_file "$mzxml_file" \
+	-p metrics_db "$metrics_db"
     """
 }
 
@@ -53,6 +55,7 @@ process papermill_identification {
     input:
     path template_ipynb
     tuple val(id), val(raw_file), path(mzxml_file), path(psm_file)
+    path metrics_db
 
     output:
     tuple val(id), path("qc_identification_${id}.ipynb"), emit: ipynb
@@ -63,7 +66,8 @@ process papermill_identification {
         --kernel python3_parallel \
         -p raw_file "$raw_file" \
         -p mzxml_file "$mzxml_file" \
-        -p psm_file "$psm_file"
+        -p psm_file "$psm_file" \
+	-p metrics_db "$metrics_db"
     """
 }
 
@@ -165,7 +169,8 @@ workflow runQc{
     // Run papermill on mzXML for instrument QC
     papermill_instrument(
 	file("$baseDir/$instrument_template_ipynb_file"),
-	qc_pairs
+	qc_pairs,
+	metrics_db
     )
 
     // Convert mzXML to mzML
@@ -207,7 +212,8 @@ workflow runQc{
 
     // Run papermill for identifications
     papermill_identification(file("$baseDir/$identification_template_ipynb_file"),
-          papermill_input,
+			     papermill_input,
+			     metrics_db
     )
 
     // Convert both instrument and identification notebooks to HTML
