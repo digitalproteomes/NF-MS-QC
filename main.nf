@@ -16,7 +16,11 @@ process generateManifest {
 
     script:
     """
-    printf "%s\\t%s\\t1\\tDDA+\\n" "${mzml_file}" "${id}" > manifest.fp-manifest
+    REP=0
+    for FILE in ${mzml_files}; do
+        REP=\$((REP + 1))
+        printf "%s\\tQC\\t%d\\tDDA+\\n" "\$FILE" "\$REP"
+    done > manifest.fp-manifest
     """
 }
 
