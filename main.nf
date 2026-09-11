@@ -148,7 +148,7 @@ process archiveRawFile {
     script:
     """
     mkdir -p "${archive_folder}"
-    dest="${archive_folder%/}/\$(basename "$raw_file")"
+    dest="${archive_folder%/}"/$(basename "$raw_file")"
     if [ -e "\$dest" ]; then
         echo "File \$dest already exists in archive, not overwriting."
     else
