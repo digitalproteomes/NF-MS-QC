@@ -20,6 +20,52 @@ process generateManifest {
     """
 }
 
+process filterExisting {
+    tag "$id"
+    cpus 1
+    memory 1.GB
+
+    input:
+    tuple val(id), val(raw_file), val(mzxml_file)
+    path metrics_db
+
+    output:
+    tuple val(id), val(raw_file), val(mzxml_file), path(".to_process"), emit: to_process, optional: true
+    tuple val(id), val(raw_file), path(".skipped"), emit: skipped, optional: true
+
+    script:
+    def mzxml_name = file(mzxml_file).name
+    """
+    python3 - "${metrics_db}" "${mzxml_name}" <<'EOF'
+import sqlite3
+import os
+import sys
+
+db_path = sys.argv[1]
+mzxml_name = sys.argv[2]
+
+exists = False
+if os.path.exists(db_path):
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='qc_metrics'")
+    if cur.fetchone():
+        cur.execute("SELECT 1 FROM qc_metrics WHERE mzxml_filename = ? LIMIT 1", (mzxml_name,))
+        if cur.fetchone():
+            exists = True
+    conn.close()
+
+if exists:
+    print(f"GUARDRAIL: {mzxml_name} already exists in database. Skipping analysis.")
+    with open(".skipped", "w") as f:
+        f.write("skipped\n")
+else:
+    with open(".to_process", "w") as f:
+        f.write("to_process\n")
+EOF
+    """
+}
+
 process papermill_instrument {
     tag "$id"
     cpus 2
@@ -101,7 +147,13 @@ process archiveRawFile {
 
     script:
     """
-    mv "$raw_file" "$archive_folder/"
+    mkdir -p "${archive_folder}"
+    dest="${archive_folder%/}/\$(basename "$raw_file")"
+    if [ -e "\$dest" ]; then
+        echo "File \$dest already exists in archive, not overwriting."
+    else
+        mv "$raw_file" "${archive_folder}/"
+    fi
     """
 }
 
@@ -125,7 +177,13 @@ workflow {
     conv_ch = convert.out.conv_out.map  { file -> tuple(file.baseName, file) }
     qc_pairs = raw_ch.join(conv_ch)
 
-    runQc(qc_pairs,
+    // Guardrail: check database for existing files
+    filterExisting(qc_pairs, params.metrics_db)
+
+    qc_pairs_to_run = filterExisting.out.to_process
+        .map { id, raw, conv, _marker -> tuple(id, raw, conv) }
+
+    runQc(qc_pairs_to_run,
 	  params.conv_params_msconvert,
 	  params.link_files.toBoolean(),
 	  params.tools_folder,
@@ -139,12 +197,18 @@ workflow {
 	  params.metrics_db
     )
 
-    // Archive the original raw file after successful QC
+    // Archive the original raw file after successful QC or if already in DB
     if (params.archive_raw.toBoolean()) {
+        processed_to_archive = qc_pairs_to_run
+            .map { id, raw, _conv -> tuple(id, file(raw).toAbsolutePath().toString()) }
+            .join(runQc.out.html.filter { _id, html -> html.name.contains('qc_identification') })
+            .map { id, raw, _html -> tuple(id, raw) }
+
+        skipped_to_archive = filterExisting.out.skipped
+            .map { id, raw, _marker -> tuple(id, file(raw).toAbsolutePath().toString()) }
+
         archiveRawFile(
-            qc_pairs.map { id, raw, _conv -> tuple(id, raw.toAbsolutePath().toString()) }
-                    .join(runQc.out.html.filter { _id, html -> html.name.contains('qc_identification') })
-                    .map { id, raw, _html -> tuple(id, raw) },
+            processed_to_archive.mix(skipped_to_archive),
             params.archive_folder
         )
     }
