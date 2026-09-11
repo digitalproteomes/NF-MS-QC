@@ -33,6 +33,10 @@ process filterExisting {
     tuple val(id), val(raw_file), val(mzxml_file), path(".to_process"), emit: to_process, optional: true
     tuple val(id), val(raw_file), path(".skipped"), emit: skipped, optional: true
 
+    // We use python to make it more portable
+
+    // We check if the filename already exists in the database to
+    // decide if skipping or continuing QC for it
     script:
     def mzxml_name = file(mzxml_file).name
     """
@@ -144,14 +148,8 @@ process archiveRawFile {
     val archive_folder
 
     script:
-    def raw_name = file(raw_file).name
     """
-    mkdir -p "${archive_folder}"
-    if [ -e "${archive_folder}/${raw_name}" ]; then
-        echo "File ${archive_folder}/${raw_name} already exists in archive, not overwriting."
-    else
-        mv "${raw_file}" "${archive_folder}/"
-    fi
+    mv "$raw_file" "$archive_folder/"
     """
 }
 
@@ -176,6 +174,12 @@ workflow {
     qc_pairs = raw_ch.join(conv_ch)
 
     // Guardrail: check database for existing files
+    // We do this after the RAW conversion, since the monitoring for
+    // new files is done by
+    // ./NF-ConvertThermo/convertThermo_workflows.nf and that workflow
+    // has no notion of a database or a need to avoid duplicates. This
+    // wastes a few CPU cycles, but keeps the code cleaner and more
+    // logical
     filterExisting(qc_pairs, params.metrics_db)
 
     qc_pairs_to_run = filterExisting.out.to_process
@@ -195,18 +199,12 @@ workflow {
 	  params.metrics_db
     )
 
-    // Archive the original raw file after successful QC or if already in DB
+    // Archive the original raw file after successful QC
     if (params.archive_raw.toBoolean()) {
-        processed_to_archive = qc_pairs_to_run
-            .map { id, raw, _conv -> tuple(id, file(raw).toAbsolutePath().toString()) }
-            .join(runQc.out.html.filter { _id, html -> html.name.contains('qc_identification') })
-            .map { id, raw, _html -> tuple(id, raw) }
-
-        skipped_to_archive = filterExisting.out.skipped
-            .map { id, raw, _marker -> tuple(id, file(raw).toAbsolutePath().toString()) }
-
         archiveRawFile(
-            processed_to_archive.mix(skipped_to_archive),
+            qc_pairs.map { id, raw, _conv -> tuple(id, raw.toAbsolutePath().toString()) }
+                    .join(runQc.out.html.filter { _id, html -> html.name.contains('qc_identification') })
+                    .map { id, raw, _html -> tuple(id, raw) },
             params.archive_folder
         )
     }
