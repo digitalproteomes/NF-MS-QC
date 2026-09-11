@@ -57,11 +57,9 @@ if os.path.exists(db_path):
 
 if exists:
     print(f"GUARDRAIL: {mzxml_name} already exists in database. Skipping analysis.")
-    with open(".skipped", "w") as f:
-        f.write("skipped\n")
+    open(".skipped", "w").close()
 else:
-    with open(".to_process", "w") as f:
-        f.write("to_process\n")
+    open(".to_process", "w").close()
 EOF
     """
 }
