@@ -146,13 +146,13 @@ process archiveRawFile {
     val archive_folder
 
     script:
+    def raw_name = file(raw_file).name
     """
     mkdir -p "${archive_folder}"
-    dest="${archive_folder%/}"/$(basename "$raw_file")"
-    if [ -e "\$dest" ]; then
-        echo "File \$dest already exists in archive, not overwriting."
+    if [ -e "${archive_folder}/${raw_name}" ]; then
+        echo "File ${archive_folder}/${raw_name} already exists in archive, not overwriting."
     else
-        mv "$raw_file" "${archive_folder}/"
+        mv "${raw_file}" "${archive_folder}/"
     fi
     """
 }
